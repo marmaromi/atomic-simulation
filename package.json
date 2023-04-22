@@ -1,0 +1,16 @@
+{
+  "name": "atomistic-simulations",
+  "version": "1.0.0",
+  "outdir": "build",
+  "scripts": {
+    "start": "ts-node src/app.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^18.13.0"
+  }
+}
