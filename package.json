@@ -12,5 +12,8 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^18.13.0"
+  },
+  "dependencies": {
+    "decimal.js": "^10.4.3"
   }
 }
