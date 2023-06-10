@@ -1,3 +1,3 @@
 import {Spheres} from "./spheres";
 
-new Spheres(4, 1, 1);
+new Spheres(256, 1, 10000);

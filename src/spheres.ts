@@ -116,7 +116,6 @@ export class Spheres {
     // console.group('assignVelocitiesZeroMom');
     // const speed = Math.sqrt(3);
     const speed = Decimal.sqrt(3);
-    // let vSum = []
     for (let i = 1; i <= this.nSpheres.toNumber(); i++) {
       const u = Decimal.random();
       const v = Decimal.random();
@@ -129,13 +128,11 @@ export class Spheres {
       ]);
     }
     // console.log('velocities: ', this.velocities);
-    // const vSum = this.velocities.reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]);
     const vSum = this.velocities.reduce((a, b) => [a[0].add(b[0]), a[1].add(b[1]), a[2].add(b[2])]);
     // console.log('vSum: ', vSum);
 
     // const vAvg = vSum.map(i => i / this.nSpheres);
-    const vAvg = vSum.map(i => i.dividedBy(this.nSpheres));
-    // console.log('vAvg', vAvg);
+    const vAvg = vSum.map(i => i.div(this.nSpheres));
 
     // this.velocities = this.velocities.map(arr => [arr[0] - vAvg[0], arr[1] - vAvg[1], arr[2] - vAvg[2]]);
     this.velocities = this.velocities.map(arr => [arr[0].minus(vAvg[0]), arr[1].minus(vAvg[1]), arr[2].minus(vAvg[2])]);
@@ -180,12 +177,12 @@ export class Spheres {
     const n = this.collisionTime.length;
     this.tCol = new Decimal(Infinity);
 
-    for (let i = 0; i < n - 1; i++) {
-      for (let j = i + 1; j < n; j++) {
-        if (this.collisionTime[i][j] < this.tCol) {
-          this.tCol = this.collisionTime[i][j];
-          this.iCol = i;
-          this.jCol = j;
+    for (let i = 1; i <= n - 1; i++) {
+      for (let j = i + 1; j <= n; j++) {
+        if (this.collisionTime[i-1][j-1] < this.tCol) {
+          this.tCol = this.collisionTime[i-1][j-1];
+          this.iCol = i-1;
+          this.jCol = j-1;
         }
       }
     }
@@ -276,7 +273,7 @@ export class Spheres {
         this.momentum[2].add(this.velocities[i][2]),
       ];
       const v = Decimal.sqrt(Calc.dotProduct(this.velocities[i], this.velocities[i]));
-      this.kineticEnergy = this.kineticEnergy.add(new Decimal(0.5).mul(v.pow(2)));
+      this.kineticEnergy = this.kineticEnergy.add(Decimal.mul(0.5, v.pow(2)));
 
       if (v.greaterThan(1) && v.lessThan(2)) {
         this.vSample = this.vSample.add(1);
@@ -303,16 +300,16 @@ export class Spheres {
   }
 
   writeProperties(nthCollision: number) {
-    this.results.push([
-      nthCollision,
-      this.momentum[0].toNumber(),
-      this.momentum[1].toNumber(),
-      this.momentum[2].toNumber(),
-      this.kineticEnergy.toNumber(),
-      this.tCol.toNumber(),
-      this.vSample.toNumber(),
-      this.orderP.toNumber(),
-      this.dv.toNumber()]);
+    this.results.push({
+      n: nthCollision,
+      mom0: this.momentum[0].toFixed(3),
+      mom1: this.momentum[1].toFixed(3),
+      mom2: this.momentum[2].toFixed(3),
+      kin: this.kineticEnergy.toFixed(3),
+      tCol: this.tCol.toNumber(),
+      vSample: this.vSample.toNumber(),
+      orderP: this.orderP.toFixed(3),
+      dv: this.dv.toNumber()});
   }
 
   updateCollisionsTable() {
@@ -328,7 +325,6 @@ export class Spheres {
   }
 
   writeResults() {
-    console.table([['nthCollision', 'momentum-0', 'momentum-1', 'momentum-2', 'kineticEnergy', 'tCol', 'vSample', 'orderP', 'dv']]);
     console.table(this.results);
   }
 
