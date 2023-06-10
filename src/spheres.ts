@@ -20,12 +20,15 @@ export class Spheres {
   vSample: Decimal;
   orderP: Decimal;
   dv: Decimal;
+  pv0: Decimal;
+  totalDV: Decimal = new Decimal(0);
+  totalTCOL: Decimal = new Decimal(0);
 
   results: any = [];
 
-
   boxLength = new Decimal(1);
   PI = Decimal.acos(-1);
+
 
   constructor(nSpheres: number, rVolume: number, nCollisions: number) {
     this.setInput(nSpheres, rVolume, nCollisions);
@@ -34,7 +37,7 @@ export class Spheres {
     this.assignPositions();
     this.assignVelocitiesZeroMom();
     this.writeInitial();
-    this.initializeCollisionsTable();
+    this.updateCollisionsTable('init');
 
     //start collision loop
     for (let i = 0; i < this.nCollisions; i++) {
@@ -42,8 +45,14 @@ export class Spheres {
       this.advanceSimulation();
       this.computeProperties();
       this.writeProperties(i + 1);
-      this.updateCollisionsTable();
+      this.updateCollisionsTable('update');
+
+      if (i > 0) {
+        this.totalDV = this.totalDV.add(this.dv);
+        this.totalTCOL = this.totalTCOL.add(this.tCol);
+      }
     }
+    this.pv0 = Decimal.mul(this.rVolume, this.totalDV.mul(this.sigma.div(this.totalTCOL.mul(this.nSpheres).mul(3))).add(1));
     this.writeResults();
   }
 
@@ -145,7 +154,7 @@ export class Spheres {
   writeInitial() {
     console.group('Input received:');
     console.log('Number of spheres: ', this.nSpheres);
-    console.log('Reduced volume: ', this.rVolume);
+    console.log('Reduced volume: ', this.rVolume.toFixed(2));
     console.log('Number of collisions: ', this.nCollisions);
     // console.log('Initial positions of the spheres: ', this.positions);
     // console.log('Initial velocities of the spheres: ', this.velocities);
@@ -153,24 +162,24 @@ export class Spheres {
     console.log('----------------------------------------');
   }
 
-  initializeCollisionsTable() {
-    // console.group('initializeCollisionsTable: ');
-    this.collisionTime = new Array(this.nSpheres.toNumber());
-    for (let index = 0; index < this.collisionTime.length; index++) {
-      this.collisionTime[index] = new Array(this.nSpheres.toNumber()).fill(new Decimal(Infinity));
-    }
-    for (let i = 0; i < this.nSpheres.toNumber() - 1; i++) {
-      for (let j = i + 1; j < this.nSpheres.toNumber(); j++) {
-        // console.log(i,j);
-        this.loopCollisionsTable(i, j);
-        // console.group('time for collision');
-        // console.log('[i,j]:               ',[i,j]);
-        // console.log('collisionTime[i][j]: ', this.collisionTime[i][j]);
-      }
-    }
-    // console.log(this.collisionTime);
-    // console.groupEnd()
-  }
+  // initializeCollisionsTable() {
+  //   // console.group('initializeCollisionsTable: ');
+  //   this.collisionTime = new Array(this.nSpheres.toNumber());
+  //   for (let index = 0; index < this.collisionTime.length; index++) {
+  //     this.collisionTime[index] = new Array(this.nSpheres.toNumber()).fill(new Decimal(Infinity));
+  //   }
+  //   for (let i = 1; i <= this.nSpheres.toNumber() - 1; i++) {
+  //     for (let j = i + 1; j <= this.nSpheres.toNumber(); j++) {
+  //       // console.log(i,j);
+  //       this.loopCollisionsTable(i - 1, j - 1);
+  //       // console.group('time for collision');
+  //       // console.log('[i,j]:               ',[i,j]);
+  //       // console.log('collisionTime[i][j]: ', this.collisionTime[i][j]);
+  //     }
+  //   }
+  //   // console.log(this.collisionTime);
+  //   // console.groupEnd()
+  // }
 
   retrieveCollisionsInfo() {
     // console.group('retrieveCollisionsInfo: ')
@@ -179,13 +188,14 @@ export class Spheres {
 
     for (let i = 1; i <= n - 1; i++) {
       for (let j = i + 1; j <= n; j++) {
-        if (this.collisionTime[i-1][j-1] < this.tCol) {
-          this.tCol = this.collisionTime[i-1][j-1];
-          this.iCol = i-1;
-          this.jCol = j-1;
+        if (this.collisionTime[i - 1][j - 1] < this.tCol) {
+          this.tCol = this.collisionTime[i - 1][j - 1];
+          this.iCol = i - 1;
+          this.jCol = j - 1;
         }
       }
     }
+
     // console.log('tCol: ', this.tCol);
     // console.log('iCol: ', this.iCol);
     // console.log('jCol: ', this.jCol);
@@ -205,6 +215,7 @@ export class Spheres {
       this.positions[i][0] = this.positions[i][0].mod(1);
       this.positions[i][1] = this.positions[i][1].mod(1);
       this.positions[i][2] = this.positions[i][2].mod(1);
+      // console.log('positions: ', this.positions[i]);
     }
 
     //update velocities of next collision
@@ -221,6 +232,9 @@ export class Spheres {
       for (let iy = -1; iy <= 1; iy++) {
         for (let iz = -1; iz <= 1; iz++) {
           const translate = [ix, iy, iz];
+          // console.log(this.tCol);
+          // console.log(this.iCol, this.jCol, translate);
+          // console.log(this.positions[this.iCol], this.positions[this.jCol]);
           const imaginaryPosition = [
             this.positions[this.jCol][0].add(translate[0]),
             this.positions[this.jCol][1].add(translate[1]),
@@ -302,33 +316,55 @@ export class Spheres {
   writeProperties(nthCollision: number) {
     this.results.push({
       n: nthCollision,
-      mom0: this.momentum[0].toFixed(3),
-      mom1: this.momentum[1].toFixed(3),
-      mom2: this.momentum[2].toFixed(3),
+      momX: this.momentum[0].toFixed(3),
+      momY: this.momentum[1].toFixed(3),
+      momZ: this.momentum[2].toFixed(3),
       kin: this.kineticEnergy.toFixed(3),
       tCol: this.tCol.toNumber(),
       vSample: this.vSample.toNumber(),
       orderP: this.orderP.toFixed(3),
-      dv: this.dv.toNumber()});
+      dv: this.dv.toNumber(),
+    });
+
+    // this.results.push([
+    //   nthCollision,
+    //   this.momentum[0].toFixed(3),
+    //   this.momentum[1].toFixed(3),
+    //   this.momentum[2].toFixed(3),
+    //   this.kineticEnergy.toFixed(3),
+    //   this.tCol.toNumber(),
+    //   this.vSample.toNumber(),
+    //   this.orderP.toFixed(3),
+    //   this.dv.toNumber(),
+    // ]);
   }
 
-  updateCollisionsTable() {
-    for (let i = 0; i < this.nSpheres.toNumber() - 1; i++) {
-      for (let j = i + 1; j < this.nSpheres.toNumber(); j++) {
-        this.collisionTime[i][j] = this.collisionTime[i][j].minus(this.tCol);
-        if (i === this.iCol || i === this.jCol || j === this.iCol || j === this.jCol) {
-          this.collisionTime[i][j] = new Decimal(Infinity);
-          this.loopCollisionsTable(i, j);
+  updateCollisionsTable(role: string) {
+    if (role === 'init') {
+      this.collisionTime = new Array(this.nSpheres.toNumber());
+      for (let index = 0; index < this.collisionTime.length; index++) {
+        this.collisionTime[index] = new Array(this.nSpheres.toNumber()).fill(new Decimal(Infinity));
+      }
+    }
+    for (let i = 1; i <= this.nSpheres.toNumber() - 1; i++) {
+      for (let j = i + 1; j <= this.nSpheres.toNumber(); j++) {
+        const k = i - 1;
+        const l = j - 1;
+        if (role === 'init') {
+          this.loopCollisionsTable(k, l);
+        } else if (role === 'update') {
+          this.collisionTime[k][l] = this.collisionTime[k][l].minus(this.tCol);
+          if (k === this.iCol || k === this.jCol || l === this.iCol || l === this.jCol) {
+            this.collisionTime[k][l] = new Decimal(Infinity);
+            this.loopCollisionsTable(k, l);
+          }
         }
       }
     }
   }
 
-  writeResults() {
-    console.table(this.results);
-  }
-
   loopCollisionsTable(i: number, j: number) {
+    // console.log('loopCollisionsTable', i, j);
     const uij = [
       this.velocities[i][0].minus(this.velocities[j][0]),
       this.velocities[i][1].minus(this.velocities[j][1]),
@@ -385,4 +421,21 @@ export class Spheres {
       }
     }
   }
+
+  writeResults() {
+    const fs = require('fs');
+    const XLSX = require('xlsx');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(this.results);
+    XLSX.utils.book_append_sheet(wb, ws, 'Table Data');
+    fs.writeFileSync('./output/results.xlsx', XLSX.write(wb, {type: 'buffer'}));
+    console.log('Table data written to file');
+
+    // const util = require('util');
+    // const writeFile = util.promisify(fs.writeFile);
+    // writeFile('results.txt', JSON.stringify(this.results), 'utf8')
+    //   .then(() => console.log('Table data written to file'))
+    //   .catch((err: any) => console.error(err));
+  }
+
 }
