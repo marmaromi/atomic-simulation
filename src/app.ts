@@ -1,5 +1,6 @@
 import {Spheres} from './spheres';
 
+const t0 = performance.now();
 const results = [];
 for (let rVolume = 1; rVolume <= 1; rVolume += 0.05) {
   const spheres = new Spheres(4, rVolume, 100);
@@ -12,3 +13,5 @@ for (let rVolume = 1; rVolume <= 1; rVolume += 0.05) {
   });
 }
 console.table(results);
+const t1 = performance.now();
+console.log('calculations took ' + (t1 - t0) + ' milliseconds.');
