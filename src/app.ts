@@ -4,6 +4,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 
 function runSpheresSimulation(nSpheres: number, rVolumeObj: rVolumeModel, nCollisions: number) {
+  const t0 = performance.now();
   let results: spheresFinalResultsModel[] = [];
   for (let rVolume = rVolumeObj.start; rVolume <= rVolumeObj.end; rVolume += rVolumeObj.step) {
     const spheres = new Spheres(nSpheres, rVolume, nCollisions);
@@ -15,6 +16,8 @@ function runSpheresSimulation(nSpheres: number, rVolumeObj: rVolumeModel, nColli
       'pv0/kT': spheres.pv0.toString(),
     });
   }
+  const t1 = performance.now();
+  console.log('Time to run simulation: ' + ((t1 - t0) / 1000).toFixed(2) + ' seconds.');
   return results;
 }
 
@@ -31,11 +34,11 @@ function writeFinalResults(results: spheresFinalResultsModel[], nSpheres: number
 
 const t0 = performance.now();
 const nSpheres = 256;
-const nCollisions = 10000;
-const rVolume: rVolumeModel = {start: 1.25, end: 1.4, step: 0.05};
+const nCollisions = 12000;
+const rVolume: rVolumeModel = {start: 1, end: 2, step: 0.05};
 
 const finalResults = runSpheresSimulation(nSpheres, rVolume, nCollisions);
 writeFinalResults(finalResults, nSpheres, nCollisions);
 
 const t1 = performance.now();
-console.log('Calculations took ' + ((t1 - t0) / 1000).toFixed(2) + ' seconds.');
+console.log('Total Calculation Time: ' + ((t1 - t0) / 1000).toFixed(2) + ' seconds.');
