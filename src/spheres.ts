@@ -1,5 +1,6 @@
 import {Calc} from './Calc';
 import {Decimal} from 'decimal.js';
+import {spheresResultsPropertiesModel} from './models';
 
 export class Spheres {
 
@@ -14,7 +15,6 @@ export class Spheres {
   iCol: number;
   jCol: number;
   deltaVel: Decimal[];
-
   momentum: Decimal[];
   kineticEnergy: Decimal;
   vSample: Decimal;
@@ -23,12 +23,10 @@ export class Spheres {
   pv0: Decimal;
   totalDV: Decimal = new Decimal(0);
   totalTCOL: Decimal = new Decimal(0);
-
-  results: any = [];
+  results: spheresResultsPropertiesModel[] = [];
 
   boxLength = new Decimal(1);
   PI = Decimal.acos(-1);
-
 
   constructor(nSpheres: number, rVolume: number, nCollisions: number) {
     this.setInput(nSpheres, rVolume, nCollisions);
@@ -47,7 +45,7 @@ export class Spheres {
       this.writeProperties(i + 1);
       this.updateCollisionsTable('update');
 
-      if (i > 0) {
+      if (i > 5000) { // skip first n collisions
         this.totalDV = this.totalDV.add(this.dv);
         this.totalTCOL = this.totalTCOL.add(this.tCol);
       }
@@ -56,74 +54,50 @@ export class Spheres {
     this.writeResults();
   }
 
-
   setInput(nSpheres: number, rVolume: number, nCollisions: number) {
-    // console.group('setInput');
     this.nSpheres = new Decimal(nSpheres);
     this.rVolume = rVolume;
     this.nCollisions = nCollisions;
-    // console.log('nSpheres: ', this.nSpheres);
-    // console.log('rVolume: ', this.rVolume);
-    // console.log('nCollisions: ', this.nCollisions);
-    //
-    // console.groupEnd();
   }
 
   validateInput() {
-    // console.group('validateInput');
-    const nInt: Decimal = this.nSpheres.dividedBy(4).pow(Decimal.div(1, 3));
+    const nInt: Decimal = this.nSpheres.div(4).pow(Decimal.div(1, 3));
     if (!Number.isInteger(nInt.toNumber())) {
-      throw Error('Wrong nSpheres!');
+      throw Error(`Wrong nSpheres!, nSpheres must be a perfect cube of 4. nSpheres = ${this.nSpheres}`);
     }
     if (this.rVolume < 1) {
-      throw Error('Wrong rVolume!');
+      throw Error(`Wrong rVolume!, rVolume must be >= 1. rVolume = ${this.rVolume}`);
     }
-    // console.groupEnd();
   }
 
   computeDiameter() {
-    // console.group('computeDiameter');
-    this.sigma = Decimal.sqrt(2).dividedBy(this.nSpheres.mul(this.rVolume)).pow(Decimal.div(1, 3)).mul(this.boxLength);
-    // console.log('sigma', this.sigma);
-    // console.groupEnd();
+    this.sigma = Decimal.sqrt(2).div(this.nSpheres.mul(this.rVolume)).pow(Decimal.div(1, 3)).mul(this.boxLength);
   }
 
   assignPositions() {
-    // console.group('assignPositions');
-    const nInt = this.nSpheres.dividedBy(4).pow(Decimal.div(1, 3));
-    const a = new Decimal(1).dividedBy(nInt);
+    const nInt = this.nSpheres.div(4).pow(Decimal.div(1, 3)).toNumber();
+    const a = new Decimal(1).div(nInt);
 
-    for (let i = 0; i < nInt.toNumber(); i++) {
-      for (let j = 0; j < nInt.toNumber(); j++) {
-        for (let k = 0; k < nInt.toNumber(); k++) {
+    for (let i = 0; i < nInt; i++) {
+      for (let j = 0; j < nInt; j++) {
+        for (let k = 0; k < nInt; k++) {
           const translation = [a.mul(i), a.mul(j), a.mul(k)];
           this.positions.push(translation);
 
-          const trans1 = [a.dividedBy(2), a.dividedBy(2), 0];
+          const trans1 = [a.div(2), a.div(2), 0];
           this.positions.push(translation.map((loc, index) => loc.add(trans1[index])));
 
-          const trans2 = [a.dividedBy(2), 0, a.dividedBy(2)];
+          const trans2 = [a.div(2), 0, a.div(2)];
           this.positions.push(translation.map((loc, index) => loc.add(trans2[index])));
 
-          const trans3 = [0, a.dividedBy(2), a.dividedBy(2)];
+          const trans3 = [0, a.div(2), a.div(2)];
           this.positions.push(translation.map((loc, index) => loc.add(trans3[index])));
         }
       }
     }
-    // console.log(this.positions);
-    // console.groupEnd();
   }
 
   assignVelocitiesZeroMom() {
-    // this.velocities = [
-    //   [new Decimal(-0.64560687459701493), new Decimal(-0.88029736677446080), new Decimal(-0.54225736800773905)],
-    //   [new Decimal(-0.59679349070925591), new Decimal(-0.093737658514908229), new Decimal(-1.1491893834322298)],
-    //   [new Decimal(1.4577059995277539), new Decimal(-0.32175617027540171), new Decimal(-0.18060048926727768)],
-    //   [new Decimal(-0.21530563422148283), new Decimal(1.2957911955647707), new Decimal(1.8720472407072464)],
-    // ];
-    // return;
-    // console.group('assignVelocitiesZeroMom');
-    // const speed = Math.sqrt(3);
     const speed = Decimal.sqrt(3);
     for (let i = 1; i <= this.nSpheres.toNumber(); i++) {
       const u = Decimal.random();
@@ -136,19 +110,9 @@ export class Spheres {
         speed.mul(Decimal.cos(phi)),
       ]);
     }
-    // console.log('velocities: ', this.velocities);
     const vSum = this.velocities.reduce((a, b) => [a[0].add(b[0]), a[1].add(b[1]), a[2].add(b[2])]);
-    // console.log('vSum: ', vSum);
-
-    // const vAvg = vSum.map(i => i / this.nSpheres);
     const vAvg = vSum.map(i => i.div(this.nSpheres));
-
-    // this.velocities = this.velocities.map(arr => [arr[0] - vAvg[0], arr[1] - vAvg[1], arr[2] - vAvg[2]]);
-    this.velocities = this.velocities.map(arr => [arr[0].minus(vAvg[0]), arr[1].minus(vAvg[1]), arr[2].minus(vAvg[2])]);
-    // console.log('velocities zero momentum: ', this.velocities);
-
-    // console.groupEnd();
-
+    this.velocities = this.velocities.map(vel => [vel[0].minus(vAvg[0]), vel[1].minus(vAvg[1]), vel[2].minus(vAvg[2])]);
   }
 
   writeInitial() {
@@ -162,27 +126,7 @@ export class Spheres {
     console.log('----------------------------------------');
   }
 
-  // initializeCollisionsTable() {
-  //   // console.group('initializeCollisionsTable: ');
-  //   this.collisionTime = new Array(this.nSpheres.toNumber());
-  //   for (let index = 0; index < this.collisionTime.length; index++) {
-  //     this.collisionTime[index] = new Array(this.nSpheres.toNumber()).fill(new Decimal(Infinity));
-  //   }
-  //   for (let i = 1; i <= this.nSpheres.toNumber() - 1; i++) {
-  //     for (let j = i + 1; j <= this.nSpheres.toNumber(); j++) {
-  //       // console.log(i,j);
-  //       this.loopCollisionsTable(i - 1, j - 1);
-  //       // console.group('time for collision');
-  //       // console.log('[i,j]:               ',[i,j]);
-  //       // console.log('collisionTime[i][j]: ', this.collisionTime[i][j]);
-  //     }
-  //   }
-  //   // console.log(this.collisionTime);
-  //   // console.groupEnd()
-  // }
-
   retrieveCollisionsInfo() {
-    // console.group('retrieveCollisionsInfo: ')
     const n = this.collisionTime.length;
     this.tCol = new Decimal(Infinity);
 
@@ -195,11 +139,6 @@ export class Spheres {
         }
       }
     }
-
-    // console.log('tCol: ', this.tCol);
-    // console.log('iCol: ', this.iCol);
-    // console.log('jCol: ', this.jCol);
-    // console.groupEnd();
   }
 
   advanceSimulation() {
@@ -215,7 +154,6 @@ export class Spheres {
       this.positions[i][0] = this.positions[i][0].mod(1);
       this.positions[i][1] = this.positions[i][1].mod(1);
       this.positions[i][2] = this.positions[i][2].mod(1);
-      // console.log('positions: ', this.positions[i]);
     }
 
     //update velocities of next collision
@@ -232,9 +170,6 @@ export class Spheres {
       for (let iy = -1; iy <= 1; iy++) {
         for (let iz = -1; iz <= 1; iz++) {
           const translate = [ix, iy, iz];
-          // console.log(this.tCol);
-          // console.log(this.iCol, this.jCol, translate);
-          // console.log(this.positions[this.iCol], this.positions[this.jCol]);
           const imaginaryPosition = [
             this.positions[this.jCol][0].add(translate[0]),
             this.positions[this.jCol][1].add(translate[1]),
@@ -265,11 +200,6 @@ export class Spheres {
       this.velocities[this.jCol][1].minus(this.deltaVel[1]),
       this.velocities[this.jCol][2].minus(this.deltaVel[2]),
     ];
-
-    // console.log('deltaVel', this.deltaVel);
-    // console.log('velocities[iCol]', this.velocities[this.iCol]);
-    // console.log('velocities[jCol]', this.velocities[this.jCol]);
-
   }
 
   computeProperties() {
@@ -303,14 +233,6 @@ export class Spheres {
     this.kineticEnergy = this.kineticEnergy.div(this.nSpheres);
     this.orderP = this.orderP.div(this.nSpheres.mul(3));
     this.dv = Decimal.sqrt(Calc.dotProduct(this.deltaVel, this.deltaVel));
-
-    // console.group('computeProperties');
-    // console.log('momentum', this.momentum);
-    // console.log('kineticEnergy', this.kineticEnergy);
-    // console.log('vSample', this.vSample);
-    // console.log('orderP', this.orderP);
-    // console.log('dv', this.dv);
-    // console.groupEnd();
   }
 
   writeProperties(nthCollision: number) {
@@ -319,24 +241,12 @@ export class Spheres {
       momX: this.momentum[0].toFixed(3),
       momY: this.momentum[1].toFixed(3),
       momZ: this.momentum[2].toFixed(3),
-      kin: this.kineticEnergy.toFixed(3),
+      kinE: this.kineticEnergy.toFixed(3),
       tCol: this.tCol.toNumber(),
       vSample: this.vSample.toNumber(),
       orderP: this.orderP.toFixed(3),
       dv: this.dv.toNumber(),
     });
-
-    // this.results.push([
-    //   nthCollision,
-    //   this.momentum[0].toFixed(3),
-    //   this.momentum[1].toFixed(3),
-    //   this.momentum[2].toFixed(3),
-    //   this.kineticEnergy.toFixed(3),
-    //   this.tCol.toNumber(),
-    //   this.vSample.toNumber(),
-    //   this.orderP.toFixed(3),
-    //   this.dv.toNumber(),
-    // ]);
   }
 
   updateCollisionsTable(role: string) {
@@ -346,6 +256,7 @@ export class Spheres {
         this.collisionTime[index] = new Array(this.nSpheres.toNumber()).fill(new Decimal(Infinity));
       }
     }
+
     for (let i = 1; i <= this.nSpheres.toNumber() - 1; i++) {
       for (let j = i + 1; j <= this.nSpheres.toNumber(); j++) {
         const k = i - 1;
@@ -364,7 +275,6 @@ export class Spheres {
   }
 
   loopCollisionsTable(i: number, j: number) {
-    // console.log('loopCollisionsTable', i, j);
     const uij = [
       this.velocities[i][0].minus(this.velocities[j][0]),
       this.velocities[i][1].minus(this.velocities[j][1]),
@@ -379,42 +289,22 @@ export class Spheres {
             this.positions[j][1].add(translate[1]),
             this.positions[j][2].add(translate[2]),
           ];
-          // console.log('translate',translate);
-          // console.log('imaginaryPosition',imaginaryPosition);
           const rij = [
             this.positions[i][0].minus(imaginaryPosition[0]),
             this.positions[i][1].minus(imaginaryPosition[1]),
             this.positions[i][2].minus(imaginaryPosition[2]),
           ];
-          // console.log('rij',rij);
           const bij = Calc.dotProduct(rij, uij);
-          // console.log(rij,uij,bij);
-          // const cij = Calc.dotProduct(rij, rij) - Math.pow(this.sigma, 2);
           const cij = Calc.dotProduct(rij, rij).minus(this.sigma.pow(2));
+
           if (bij.lessThan(new Decimal(0))) {
             const uij2 = Calc.dotProduct(uij, uij);
             const discriminant = bij.mul(bij).minus(uij2.mul(cij));
             if (discriminant.greaterThan(new Decimal(0))) {
-              // console.log('uij: ',uij);
-              // console.log('uij','bij');
-              // console.log(uij,bij);
-              // console.log('bij', bij);
-              // console.log('discriminant', discriminant);
-              // console.log('uij2: ',uij2);
-              // const time = (-bij - Math.sqrt(discriminant)) / uij2;
-              const time = new Decimal(-bij.minus(Decimal.sqrt(discriminant).dividedBy(uij2)));
-              // console.group('time for collision');
-              // console.log('time:                ', time);
-              // console.log('collisionTime[i][j]: ', this.collisionTime[i][j]);
-              // console.groupEnd()
+              const time = new Decimal(-bij.minus(discriminant.sqrt())).div(uij2);
               if (time < this.collisionTime[i][j]) {
-                // console.group('time for collision');
-                // console.log('time:                ', time);
-                // console.log('collisionTime[i][j]: ', this.collisionTime[i][j]);
-                // console.groupEnd()
                 this.collisionTime[i][j] = time;
               }
-              // console.log('this.collisionTime[i][j]',this.collisionTime[i][j]);
             }
           }
         }
@@ -428,14 +318,8 @@ export class Spheres {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(this.results);
     XLSX.utils.book_append_sheet(wb, ws, 'Table Data');
-    fs.writeFileSync('./output/results.xlsx', XLSX.write(wb, {type: 'buffer'}));
+    fs.writeFileSync(`./output/results_${this.nSpheres.toNumber()}_${this.rVolume.toFixed(2)}_${this.nCollisions}.xlsx`, XLSX.write(wb, {type: 'buffer'}));
     console.log('Table data written to file');
-
-    // const util = require('util');
-    // const writeFile = util.promisify(fs.writeFile);
-    // writeFile('results.txt', JSON.stringify(this.results), 'utf8')
-    //   .then(() => console.log('Table data written to file'))
-    //   .catch((err: any) => console.error(err));
   }
 
 }
