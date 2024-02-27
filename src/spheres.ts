@@ -34,22 +34,23 @@ export class Spheres {
     this.computeDiameter();
     this.assignPositions();
     this.assignVelocitiesZeroMom();
-    this.writeInitial();
-    this.updateCollisionsTable('init');
-
-    //start collision loop
-    for (let i = 0; i < this.nCollisions; i++) {
-      this.retrieveCollisionsInfo();
-      this.advanceSimulation();
-      this.computeProperties();
-      this.writeProperties(i + 1);
-      this.updateCollisionsTable('update');
-
-      if (i > 5000) { // skip first n collisions
-        this.totalDV = this.totalDV.add(this.dv);
-        this.totalTCOL = this.totalTCOL.add(this.tCol);
-      }
-    }
+    console.log('velocities1',this.velocities);
+    // this.writeInitial();
+    // this.updateCollisionsTable('init');
+    //
+    // //start collision loop
+    // for (let i = 0; i < this.nCollisions; i++) {
+    //   this.retrieveCollisionsInfo();
+    //   this.advanceSimulation();
+    //   this.computeProperties();
+    //   this.writeProperties(i + 1);
+    //   this.updateCollisionsTable('update');
+    //
+    //   if (i > 5000) { // skip first n collisions
+    //     this.totalDV = this.totalDV.add(this.dv);
+    //     this.totalTCOL = this.totalTCOL.add(this.tCol);
+    //   }
+    // }
     this.pv0 = Decimal.mul(this.rVolume, this.totalDV.mul(this.sigma.div(this.totalTCOL.mul(this.nSpheres).mul(3))).add(1));
     this.writeResults();
   }
@@ -280,6 +281,8 @@ export class Spheres {
       this.velocities[i][1].minus(this.velocities[j][1]),
       this.velocities[i][2].minus(this.velocities[j][2]),
     ];
+    const uij2 = Calc.dotProduct(uij, uij);
+
     for (let ix = -1; ix <= 1; ix++) {
       for (let iy = -1; iy <= 1; iy++) {
         for (let iz = -1; iz <= 1; iz++) {
@@ -298,7 +301,6 @@ export class Spheres {
           const cij = Calc.dotProduct(rij, rij).minus(this.sigma.pow(2));
 
           if (bij.lessThan(new Decimal(0))) {
-            const uij2 = Calc.dotProduct(uij, uij);
             const discriminant = bij.mul(bij).minus(uij2.mul(cij));
             if (discriminant.greaterThan(new Decimal(0))) {
               const time = new Decimal(-bij.minus(discriminant.sqrt())).div(uij2);

@@ -11,9 +11,11 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/big.js": "^6.1.6",
     "@types/node": "^18.13.0"
   },
   "dependencies": {
+    "big.js": "^6.2.1",
     "decimal.js": "^10.4.3",
     "ts-node": "^10.9.1",
     "xlsx": "^0.18.5"
